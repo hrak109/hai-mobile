@@ -1,24 +1,47 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+import { Slot, Stack, useRouter, useSegments, usePathname } from 'expo-router';
+import { useEffect } from 'react';
+import { AuthProvider, useSession } from '../context/AuthContext';
+import { View, ActivityIndicator } from 'react-native';
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+const InitialLayout = () => {
+  const { session, isLoading } = useSession();
+  const segments = useSegments();
+  const pathname = usePathname();
+  const router = useRouter();
 
-export const unstable_settings = {
-  anchor: '(tabs)',
+  useEffect(() => {
+    if (isLoading) return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+    const isAtRoot = pathname === '/';
+
+    console.log('Nav State:', { session: !!session, pathname, segments, inAuthGroup });
+
+    if (!session && !inAuthGroup && !isAtRoot) {
+      // Redirect to the sign-in page if not logged in and trying to access protected route
+      // But allow access to root (login page)
+      router.replace('/');
+    } else if (session && isAtRoot) {
+      // Redirect to the chat page if logged in and on root
+      router.replace('/chat');
+    }
+  }, [session, isLoading, segments, pathname]);
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
+  return <Slot />;
 };
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthProvider>
+      <InitialLayout />
+    </AuthProvider>
   );
 }
