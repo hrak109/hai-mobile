@@ -39,7 +39,7 @@ export default function ChatScreen() {
         setIsTyping(true);
         try {
             // Send question
-            const res = await api.post('/ask', {
+            const res = await api.post('/api/private/ask', {
                 q_text: text,
                 // auth_params is handled by backend via user context now, 
                 // but we can pass model info if backend supports it later.
@@ -61,7 +61,7 @@ export default function ChatScreen() {
     const pollAnswer = async (qid: string) => {
         const interval = setInterval(async () => {
             try {
-                const res = await api.get(`/get_answer/${qid}`);
+                const res = await api.get(`/api/private/get_answer/${qid}`);
                 const data = res.data;
 
                 if (data.status === 'answered') {
