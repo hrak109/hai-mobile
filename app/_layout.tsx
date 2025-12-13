@@ -12,12 +12,10 @@ const InitialLayout = () => {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === '(auth)';
     const isAtRoot = pathname === '/';
+    console.log('Nav State:', { session: !!session, pathname, segments });
 
-    console.log('Nav State:', { session: !!session, pathname, segments, inAuthGroup });
-
-    if (!session && !inAuthGroup && !isAtRoot) {
+    if (!session && !isAtRoot) {
       // Redirect to the sign-in page if not logged in and trying to access protected route
       // But allow access to root (login page)
       router.replace('/');

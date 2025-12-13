@@ -29,17 +29,23 @@ export default function LoginScreen() {
             await GoogleSignin.hasPlayServices();
 
             // Trigger the sign-in flow
-            const userInfo = await GoogleSignin.signIn();
+            const response = await GoogleSignin.signIn();
 
             // Debug: Log the response structure
-            console.log('Google Sign-In Response:', JSON.stringify(userInfo, null, 2));
+            console.log('Google Sign-In Response:', JSON.stringify(response, null, 2));
 
-            // Extract the ID token - try both possible paths
-            const idToken = userInfo.data?.idToken || userInfo.idToken;
+            if (response.type === 'cancelled') {
+                // User cancelled the login flow
+                console.log('User cancelled sign-in');
+                return;
+            }
+
+            const userInfo = response.data;
+            const idToken = userInfo?.idToken;
 
             if (!idToken) {
-                console.error('userInfo structure:', userInfo);
-                throw new Error('No ID token received from Google. Check console for userInfo structure.');
+                console.error('response structure:', response);
+                throw new Error('No ID token received from Google. Check console for response structure.');
             }
 
             // Send ID token to your backend for verification
