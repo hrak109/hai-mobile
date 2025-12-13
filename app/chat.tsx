@@ -27,9 +27,13 @@ export default function ChatScreen() {
     const [modalVisible, setModalVisible] = useState(false);
 
     useEffect(() => {
+        setMessages([]); // Clear messages immediately on switch for visual feedback
         const fetchHistory = async () => {
             try {
-                const res = await api.get('/api/private/history');
+                // Fetch context-aware history
+                const res = await api.get('/api/private/history', {
+                    params: { model: selectedModel }
+                });
                 const history = res.data;
                 const formattedMessages = history.map((msg: any) => ({
                     _id: msg.id,
@@ -42,7 +46,7 @@ export default function ChatScreen() {
                     setMessages([
                         {
                             _id: 1,
-                            text: 'Hello! How can I help you today?',
+                            text: `Hello! You are now chatting with ${selectedModel}.`,
                             createdAt: new Date(),
                             user: BOT_USER,
                         },
@@ -64,15 +68,9 @@ export default function ChatScreen() {
         };
 
         fetchHistory();
-    }, []);
+    }, [selectedModel]); // Refetch when model changes
 
-    const onSend = useCallback((newMessages: IMessage[] = []) => {
-        setMessages((previousMessages) => GiftedChat.append(previousMessages, newMessages));
-        const text = newMessages[0].text;
-        handleSendQuestion(text);
-    }, []);
-
-    const handleSendQuestion = async (text: string) => {
+    const handleSendQuestion = useCallback(async (text: string) => {
         setIsTyping(true);
         try {
             // Send question with selected model
@@ -82,18 +80,27 @@ export default function ChatScreen() {
             });
 
             const { question_id } = res.data;
-            pollAnswer(question_id);
+            pollAnswer(question_id, selectedModel);
         } catch (error) {
             console.error('Error sending question:', error);
             setIsTyping(false);
             appendBotMessage('Sorry, I encountered an error sending your message.');
         }
-    };
+    }, [selectedModel]);
 
-    const pollAnswer = async (qid: string) => {
+    const onSend = useCallback((newMessages: IMessage[] = []) => {
+        setMessages((previousMessages) => GiftedChat.append(previousMessages, newMessages));
+        const text = newMessages[0].text;
+        handleSendQuestion(text);
+    }, [handleSendQuestion]);
+
+    const pollAnswer = async (qid: string, modelUsed: string) => {
         const interval = setInterval(async () => {
             try {
-                const res = await api.get(`/api/private/get_answer/${qid}`);
+                // Pass model so we can tag the answer in history
+                const res = await api.get(`/api/private/get_answer/${qid}`, {
+                    params: { model: modelUsed }
+                });
                 const data = res.data;
 
                 if (data.status === 'answered') {
