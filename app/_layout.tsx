@@ -23,7 +23,7 @@ const InitialLayout = () => {
       router.replace('/');
     } else if (session && isAtRoot) {
       // Redirect to the chat page if logged in and on root
-      router.replace('/chat');
+      router.replace('/home');
     }
   }, [session, isLoading, segments, pathname]);
 

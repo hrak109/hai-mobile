@@ -68,7 +68,7 @@ export default function LoginScreen() {
         try {
             const accessToken = await loginWithGoogle(idToken);
             await signIn(accessToken);
-            router.replace('/chat');
+            router.replace('/home');
         } catch (error) {
             console.error('Backend Login error:', error);
             alert('Backend authentication failed.');
@@ -78,8 +78,8 @@ export default function LoginScreen() {
     return (
         <View style={styles.container}>
             <View style={styles.header}>
-                <Text style={styles.title}>Hai Mobile</Text>
-                <Text style={styles.subtitle}>Secure AI Chat</Text>
+                <Text style={styles.title}>Hai</Text>
+                <Text style={styles.subtitle}>Secure AI by Hee</Text>
             </View>
 
             <TouchableOpacity

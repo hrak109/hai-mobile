@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, Modal, FlatList, TouchableWithoutFeedback } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { GiftedChat, IMessage, User } from 'react-native-gifted-chat';
 import { useSession } from '../context/AuthContext';
 import { useRouter } from 'expo-router';
@@ -11,22 +12,58 @@ const BOT_USER: User = {
     avatar: 'https://placeimg.com/140/140/tech',
 };
 
+const MODELS = [
+    { id: 'hbb-llama3.2:3b', name: '🧠 HBB Model', disabled: false },
+    { id: 'ohp-llama3.2:3b', name: '🌲 OHP Model', disabled: false },
+    { id: 'rag-engine', name: '📚 RAG Engine', disabled: true },
+];
+
 export default function ChatScreen() {
     const { signOut } = useSession();
     const router = useRouter();
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [isTyping, setIsTyping] = useState(false);
     const [selectedModel, setSelectedModel] = useState('hbb-llama3.2:3b');
+    const [modalVisible, setModalVisible] = useState(false);
 
     useEffect(() => {
-        setMessages([
-            {
-                _id: 1,
-                text: 'Hello! How can I help you today?',
-                createdAt: new Date(),
-                user: BOT_USER,
-            },
-        ]);
+        const fetchHistory = async () => {
+            try {
+                const res = await api.get('/api/private/history');
+                const history = res.data;
+                const formattedMessages = history.map((msg: any) => ({
+                    _id: msg.id,
+                    text: msg.content,
+                    createdAt: new Date(msg.created_at),
+                    user: msg.role === 'user' ? { _id: 1 } : BOT_USER,
+                }));
+                // Add initial greeting at the end if history is empty
+                if (formattedMessages.length === 0) {
+                    setMessages([
+                        {
+                            _id: 1,
+                            text: 'Hello! How can I help you today?',
+                            createdAt: new Date(),
+                            user: BOT_USER,
+                        },
+                    ]);
+                } else {
+                    setMessages(formattedMessages);
+                }
+            } catch (error) {
+                console.error('Failed to fetch history:', error);
+                setMessages([
+                    {
+                        _id: 1,
+                        text: 'Hello! How can I help you today?',
+                        createdAt: new Date(),
+                        user: BOT_USER,
+                    },
+                ]);
+            }
+        };
+
+        fetchHistory();
     }, []);
 
     const onSend = useCallback((newMessages: IMessage[] = []) => {
@@ -38,15 +75,10 @@ export default function ChatScreen() {
     const handleSendQuestion = async (text: string) => {
         setIsTyping(true);
         try {
-            // Send question
+            // Send question with selected model
             const res = await api.post('/api/private/ask', {
                 q_text: text,
-                // auth_params is handled by backend via user context now, 
-                // but we can pass model info if backend supports it later.
-                // For now, backend uses default or hardcoded logic, 
-                // but let's assume we might want to pass it.
-                // The current private_api.py doesn't use 'model' field in Question model,
-                // so we just send q_text.
+                model: selectedModel
             });
 
             const { question_id } = res.data;
@@ -100,16 +132,64 @@ export default function ChatScreen() {
         router.replace('/');
     };
 
+    const handleSelectModel = (modelId: string) => {
+        setSelectedModel(modelId);
+        setModalVisible(false);
+    };
+
+    const getModelName = (id: string) => {
+        return MODELS.find(m => m.id === id)?.name || id;
+    };
+
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.header}>
-                <View style={styles.modelSelector}>
-                    <Text style={styles.modelText}>{selectedModel}</Text>
-                </View>
+                <TouchableOpacity
+                    style={styles.modelSelector}
+                    onPress={() => setModalVisible(true)}
+                >
+                    <Text style={styles.modelText}>{getModelName(selectedModel)} ▼</Text>
+                </TouchableOpacity>
                 <TouchableOpacity onPress={handleSignOut} style={styles.logoutButton}>
                     <Text style={styles.logoutText}>Logout</Text>
                 </TouchableOpacity>
             </View>
+
+            <Modal
+                animationType="fade"
+                transparent={true}
+                visible={modalVisible}
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+                    <View style={styles.modalOverlay}>
+                        <View style={styles.modalContent}>
+                            <Text style={styles.modalTitle}>Select Model</Text>
+                            {MODELS.map((item) => (
+                                <TouchableOpacity
+                                    key={item.id}
+                                    style={[
+                                        styles.modelOption,
+                                        selectedModel === item.id && styles.selectedOption,
+                                        item.disabled && styles.disabledOption
+                                    ]}
+                                    onPress={() => !item.disabled && handleSelectModel(item.id)}
+                                    disabled={item.disabled}
+                                >
+                                    <Text style={[
+                                        styles.modelOptionText,
+                                        selectedModel === item.id && styles.selectedOptionText,
+                                        item.disabled && styles.disabledOptionText
+                                    ]}>
+                                        {item.name} {item.disabled && '(Coming Soon)'}
+                                    </Text>
+                                    {selectedModel === item.id && <Text style={styles.checkmark}>✓</Text>}
+                                </TouchableOpacity>
+                            ))}
+                        </View>
+                    </View>
+                </TouchableWithoutFeedback>
+            </Modal>
 
             <GiftedChat
                 messages={messages}
@@ -138,7 +218,8 @@ const styles = StyleSheet.create({
     },
     modelSelector: {
         backgroundColor: '#f0f0f0',
-        padding: 8,
+        paddingVertical: 8,
+        paddingHorizontal: 15,
         borderRadius: 20,
     },
     modelText: {
@@ -150,5 +231,55 @@ const styles = StyleSheet.create({
     },
     logoutText: {
         color: 'red',
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    modalContent: {
+        width: '80%',
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        padding: 20,
+        alignItems: 'stretch',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        marginBottom: 15,
+        textAlign: 'center',
+    },
+    modelOption: {
+        paddingVertical: 15,
+        paddingHorizontal: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    selectedOption: {
+        backgroundColor: '#f0f8ff',
+    },
+    disabledOption: {
+        opacity: 0.5,
+    },
+    modelOptionText: {
+        fontSize: 16,
+        color: '#333',
+    },
+    selectedOptionText: {
+        color: '#007AFF',
+        fontWeight: '600',
+    },
+    disabledOptionText: {
+        color: '#999',
+    },
+    checkmark: {
+        color: '#007AFF',
+        fontSize: 16,
+        fontWeight: 'bold',
     },
 });
