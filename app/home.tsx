@@ -58,7 +58,7 @@ export default function HomeScreen() {
     };
 
     const handleSearchPress = () => {
-        router.push({ pathname: '/chat', params: { model: 'hbb-llama3.2:3b' } });
+        router.push({ pathname: '/chat', params: { model: 'hbb-model' } });
     };
 
     const renderItem = ({ item }: { item: AppIcon }) => (

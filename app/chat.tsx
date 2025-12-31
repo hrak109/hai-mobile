@@ -14,8 +14,8 @@ const BOT_USER: User = {
 };
 
 const MODELS = [
-    { id: 'hbb-llama3.2:3b', name: '🧠 HBB Model', disabled: false },
-    { id: 'ohp-llama3.2:3b', name: '🌲 OHP Model', disabled: false },
+    { id: 'hbb-model', name: '🧠 HBB Model', disabled: false },
+    { id: 'ohp-model', name: '🌲 OHP Model', disabled: false },
     { id: 'rag-engine', name: '📚 RAG Engine', disabled: true },
 ];
 
@@ -25,7 +25,7 @@ export default function ChatScreen() {
     const { model } = useLocalSearchParams<{ model: string }>();
     const [messages, setMessages] = useState<IMessage[]>([]);
     const [isTyping, setIsTyping] = useState(false);
-    const [selectedModel, setSelectedModel] = useState(model || 'hbb-llama3.2:3b');
+    const [selectedModel, setSelectedModel] = useState(model || 'hbb-model');
     const [modalVisible, setModalVisible] = useState(false);
 
     useEffect(() => {
